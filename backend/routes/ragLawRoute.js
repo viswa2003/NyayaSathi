@@ -97,7 +97,7 @@ router.post("/laws", auth, guestLimiter, async (req, res) => {
           "legal_text": "string (from context)",
           "punishment": "string (from context)"
         } ],
-        "nextSteps": { "suggestions": "string (2-3 safe, general next steps in India)", "disclaimer": "This is informational only, not legal advice. Consult a qualified legal professional." }
+        "nextSteps": { "suggestions": "string (2-3 safe, general next steps in India, separated by newline characters \\n - one step per line)", "disclaimer": "This is informational only, not legal advice. Consult a qualified legal professional." }
       }
     `;
 

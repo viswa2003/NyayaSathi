@@ -17,6 +17,7 @@ import AdvicePage from './pages/AdvicePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import SectionDetailPage from './pages/SectionDetailPage';
+import SavedAdvicePage from './pages/SavedAdvicePage';
 
 // Import admin components
 import AdminLayout from './pages/admin/AdminLayout';
@@ -72,6 +73,7 @@ const AppContent: React.FC = () => {
                     <Route path="/" element={<ProtectedRoute><HomePage onOpenChat={handleOpenChat} /></ProtectedRoute>} />
                     <Route path="/describe" element={<ProtectedRoute><DescribePage /></ProtectedRoute>} />
                     <Route path="/advice" element={<ProtectedRoute><AdvicePage /></ProtectedRoute>} />
+                    <Route path="/saved-advice" element={<ProtectedRoute><SavedAdvicePage /></ProtectedRoute>} />
                     <Route path="/library" element={<ProtectedRoute><LawLibraryPage /></ProtectedRoute>} />
                     <Route path="/laws/:id" element={<ProtectedRoute><SectionDetailPage /></ProtectedRoute>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
@@ -101,6 +103,7 @@ const AppContent: React.FC = () => {
                         <Route path="/" element={<ProtectedRoute><HomePage onOpenChat={handleOpenChat} /></ProtectedRoute>} />
                         <Route path="/describe" element={<ProtectedRoute><DescribePage /></ProtectedRoute>} />
                         <Route path="/advice" element={<ProtectedRoute><AdvicePage /></ProtectedRoute>} />
+                        <Route path="/saved-advice" element={<ProtectedRoute><SavedAdvicePage /></ProtectedRoute>} />
                         <Route path="/library" element={<ProtectedRoute><LawLibraryPage /></ProtectedRoute>} />
                         <Route path="/laws/:id" element={<ProtectedRoute><SectionDetailPage /></ProtectedRoute>} />
                         <Route path="*" element={<Navigate to="/" replace />} />

@@ -72,7 +72,7 @@ const DescribePage: React.FC = () => {
             }
 
             // On success (response.ok), navigate to the AdvicePage
-            navigate('/advice', { state: { advice: data } });
+            navigate('/advice', { state: { advice: data, userProblem: issue } });
 
         } catch (err: any) {
             // Set error state for network or other unexpected errors

@@ -17,6 +17,7 @@ const lawRoutes = require('./routes/lawRoutes');
 const searchRoutes = require('./routes/search');
 const ragLawRoutes = require('./routes/ragLawRoute');
 const adminRoutes = require('./routes/adminRoutes');
+const savedAdviceRoutes = require('./routes/savedAdviceRoutes');
 
 // DB connect
 mongoose.connect(process.env.MONGO_URI)
@@ -30,6 +31,7 @@ app.use('/api/laws', lawRoutes);
 // app.use('/api/search', searchRoutes);
 app.use('/api/search', auth, guestLimiter, searchRoutes);
 app.use('/api/rag-laws', auth, guestLimiter, ragLawRoutes);
+app.use('/api/saved-advice', savedAdviceRoutes); // Protected by auth inside routes
 app.use('/api/admin', auth, admin, adminRoutes);
 
 // Start server

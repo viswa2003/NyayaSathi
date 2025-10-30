@@ -40,7 +40,12 @@ const Header: React.FC = () => {
                         <button title="Contact (Placeholder)" className="p-2 rounded-full text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300">
                             <PhoneIcon className="h-6 w-6" />
                         </button>
-                        <button title="Saved Advice (Placeholder)" className="p-2 rounded-full text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300" disabled={user?.role === 'guest'}>
+                        <button 
+                            title={user?.role === 'guest' ? 'Sign up to save advice' : 'Saved Advice'}
+                            onClick={() => user?.role !== 'guest' && navigate('/saved-advice')}
+                            className="p-2 rounded-full text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300" 
+                            disabled={user?.role === 'guest'}
+                        >
                             <BookmarkIcon className={`h-6 w-6 ${user?.role === 'guest' ? 'text-blue-300' : ''}`} />
                         </button>
 

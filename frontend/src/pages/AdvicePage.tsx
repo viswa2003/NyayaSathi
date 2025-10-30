@@ -1,7 +1,8 @@
 // src/components/AdvicePage.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import LawInfoModal from '../components/LawInfoModal';
+import { useAuth } from '../context/AuthContext';
 
 // Define an interface for the relevant section structure
 // This should match the JSON structure from your backend
@@ -28,16 +29,82 @@ interface AdviceData {
 
 const AdvicePage: React.FC = () => {
     const location = useLocation();
+    const { token, user } = useAuth();
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [saveSuccess, setSaveSuccess] = useState(false);
     
     // Get the advice data passed from DescribePage
     // We type-cast it to our interface
     const advice: AdviceData = location.state?.advice;
+    const userProblem: string = location.state?.userProblem;
+    const isSaved: boolean = location.state?.isSaved || false; // Flag indicating if this is a saved advice being viewed
 
     // If no advice data is present (e.g., user navigated here directly)
     // redirect them back to the describe page.
     if (!advice) {
         return <Navigate to="/describe" replace />;
     }
+
+    const handleSaveAdvice = async () => {
+        if (!token) {
+            setSaveError('You must be logged in to save advice');
+            return;
+        }
+
+        if (user?.role === 'guest') {
+            setSaveError('Guest users cannot save advice. Please sign up to save your queries.');
+            return;
+        }
+
+        if (!userProblem) {
+            setSaveError('Unable to save: original query not found');
+            return;
+        }
+
+        setSaving(true);
+        setSaveError(null);
+        setSaveSuccess(false);
+
+        try {
+            const response = await fetch('/api/saved-advice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    userProblem,
+                    legalInformation: advice.legalInformation,
+                    punishment: advice.punishment || '',
+                    relevantSections: advice.relevantSections,
+                    nextSteps: advice.nextSteps
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                
+                // Handle duplicate save (409 Conflict)
+                if (response.status === 409) {
+                    setSaveError('You have already saved advice for this query');
+                    setSaveSuccess(false);
+                } else {
+                    throw new Error(error.message || 'Failed to save advice');
+                }
+                
+                setSaving(false);
+                return;
+            }
+
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 5000); // Clear success message after 5s
+        } catch (error: any) {
+            setSaveError(error.message || 'Failed to save advice');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -67,10 +134,15 @@ const AdvicePage: React.FC = () => {
             {/* Recommended Next Steps (from AI) */}
             <div className="bg-orange-50 p-6 rounded-lg shadow-sm">
                 <h3 className="text-lg font-semibold text-orange-800 mb-3">Recommended Next Steps</h3>
-                {/* We use whitespace-pre-wrap to respect newlines from the AI's response */}
-                <p className="text-orange-700 whitespace-pre-wrap">
-                    {advice.nextSteps.suggestions}
-                </p>
+                {/* Split suggestions by newlines or numbers and render as list */}
+                <div className="text-orange-700 space-y-2">
+                    {advice.nextSteps.suggestions.split(/\n+/).filter(line => line.trim()).map((step, idx) => (
+                        <div key={idx} className="flex items-start gap-2">
+                            <span className="font-semibold min-w-[24px]">{idx + 1}.</span>
+                            <span>{step.replace(/^\d+\.\s*/, '')}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
 
              {/* Disclaimer (from AI) */}
@@ -81,9 +153,44 @@ const AdvicePage: React.FC = () => {
                 </p>
             </div>
 
-            <button className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition-colors">
-                Save Advice
-            </button>
+            {/* Save Error/Success Messages */}
+            {saveError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    {saveError}
+                </div>
+            )}
+
+            {saveSuccess && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                    ✓ Advice saved successfully!
+                </div>
+            )}
+
+            {/* Only show save button if this is NOT already a saved advice */}
+            {!isSaved && (
+                <>
+                    <button 
+                        onClick={handleSaveAdvice}
+                        disabled={saving || !token || user?.role === 'guest' || saveSuccess}
+                        className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                        {saving ? 'Saving...' : saveSuccess ? '✓ Saved' : 'Save Advice'}
+                    </button>
+
+                    {user?.role === 'guest' && (
+                        <p className="text-sm text-gray-600 text-center">
+                            Guest users cannot save advice. <a href="/signup" className="text-blue-600 hover:underline">Sign up</a> to save your queries.
+                        </p>
+                    )}
+                </>
+            )}
+
+            {/* Show info message if viewing saved advice */}
+            {isSaved && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-center">
+                    📚 This advice is already saved in your library
+                </div>
+            )}
         </div>
     );
 };

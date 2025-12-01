@@ -1,7 +1,7 @@
 // routes/ragLawRoute.js
 const express = require("express");
 const router = express.Router();
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenAI } = require("@google/genai"); // Using the new SDK
 const Law = require("../models/Law");
 const { auth } = require('../middleware/authMiddleware');
 const guestLimiter = require('../middleware/guestLimiter');
@@ -11,7 +11,7 @@ require("dotenv").config();
 const { getEmbedding } = require('../services/embeddingService');
 const { cosineSimilarity } = require('../utils/similarity');
 
-// Initialize the AI Client with new SDK
+// Initialize the AI Client
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // @route   POST api/rag-laws/laws
@@ -24,7 +24,7 @@ router.post("/laws", auth, guestLimiter, async (req, res) => {
       return res.status(400).json({ message: "User problem description is required." });
     }
 
-    console.log(`RAG query received from user ID: ${req.user.id}, Role: ${req.user.role}`);
+    // console.log(`RAG query received from user ID: ${req.user.id}`);
 
     // --- RAG Logic with Semantic Search ---
     
@@ -72,7 +72,7 @@ router.post("/laws", auth, guestLimiter, async (req, res) => {
       punishment: law.punishment,
       category: law.category,
       act_name: law.act_name,
-      similarity_score: law.score.toFixed(3) // Optional: show relevance
+      similarity_score: law.score.toFixed(3)
     }));
 
     // 6. Create Prompt for AI (Generation)
@@ -101,31 +101,78 @@ router.post("/laws", auth, guestLimiter, async (req, res) => {
       }
     `;
 
-    // 7. Call AI (Generation) - Updated for new SDK
-    const modelName = process.env.GEMINI_MODEL_NAME || "gemini-2.0-flash-exp";
+    // 7. Call AI (Generation) - UPDATED FOR STABILITY & SAFETY
+    // Using gemini-2.5-flash for speed and generous free tier
+    const modelName = "gemini-2.5-flash"; 
+    
     const generationResult = await ai.models.generateContent({
       model: modelName,
-      contents: generationPrompt
+      contents: [
+        {
+            role: "user",
+            parts: [{ text: generationPrompt }]
+        }
+      ],
+      // CRITICAL: Safety settings allow the model to discuss "crimes" without blocking
+      config: {
+        safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+        ]
+      }
     });
-    const generatedText = generationResult.text;
+
+    // Handle different response structures (Robustness check)
+    let generatedText = "";
+    if (generationResult && generationResult.text) {
+        generatedText = typeof generationResult.text === 'function' 
+            ? generationResult.text() 
+            : generationResult.text;
+    } else if (generationResult && generationResult.response && generationResult.response.text) {
+        generatedText = typeof generationResult.response.text === 'function'
+            ? generationResult.response.text()
+            : generationResult.response.text;
+    }
 
     // 8. Parse and Send Response
     try {
+      if (!generatedText) {
+          throw new Error("AI returned empty response. It may have been blocked or the model is overloaded.");
+      }
+
       const cleanJsonText = generatedText.replace(/```json/g, "").replace(/```/g, "").trim();
+      
       if (!cleanJsonText.startsWith('{') || !cleanJsonText.endsWith('}')) {
+          // Fallback: Try to find JSON within the text
+          const firstCurly = cleanJsonText.indexOf('{');
+          const lastCurly = cleanJsonText.lastIndexOf('}');
+          if(firstCurly !== -1 && lastCurly !== -1) {
+             const fixedJson = cleanJsonText.substring(firstCurly, lastCurly + 1);
+             const structuredResponse = JSON.parse(fixedJson);
+             return res.status(200).json(structuredResponse);
+          }
           throw new Error("AI response is not valid JSON format.");
       }
+
       const structuredResponse = JSON.parse(cleanJsonText);
       res.status(200).json(structuredResponse);
+
     } catch (parseError) {
       console.error("Failed to parse JSON from AI:", parseError);
-      console.error("AI Response causing error (first 500 chars):", generatedText.substring(0, 500));
+      console.error("Raw AI Response:", generatedText);
       res.status(500).json({ message: "Error processing the AI response. Please try again." });
     }
+
   } catch (error) {
     const userId = req.user ? req.user.id : 'N/A';
     console.error(`Error in /laws route for user ${userId}:`, error);
-    res.status(500).json({ message: "An internal server error occurred while processing your request." });
+    // Explicitly check for Quota/Overloaded errors
+    if (error.status === 429 || (error.message && error.message.includes("429"))) {
+         return res.status(429).json({ message: "Server is currently busy (Quota Exceeded). Please try again in a moment." });
+    }
+    res.status(500).json({ message: "An internal server error occurred." });
   }
 });
 

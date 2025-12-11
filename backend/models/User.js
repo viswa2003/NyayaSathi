@@ -32,8 +32,7 @@ const userSchema = new mongoose.Schema({
     },
 }, { timestamps: true }); // Use timestamps for createdAt and updatedAt
 
-// Add index for faster email lookup during login
-// Sparse index allows uniqueness constraint only when email is present
-userSchema.index({ email: 1 }, { unique: true, sparse: true });
+// Note: No need for manual index - 'unique: true' and 'sparse: true' on the email field
+// already create the necessary index automatically
 
 module.exports = mongoose.model('User', userSchema);

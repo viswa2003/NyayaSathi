@@ -1,7 +1,7 @@
 // src/pages/LawLibraryPage.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 interface Law {
     _id: string;
@@ -22,101 +22,107 @@ interface LawCardProps {
 }
 
 const LawLibraryPage: React.FC = () => {
-    const [allLaws, setAllLaws] = useState<Law[]>([]);
-    const [filteredLaws, setFilteredLaws] = useState<Law[]>([]);
+    const [searchParams] = useSearchParams();
+    const [laws, setLaws] = useState<Law[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState<string>('All');
+    const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const lawsPerPage = 25;
+    const [totalLaws, setTotalLaws] = useState<number>(0);
 
     // Popular categories to show as chips
-    const popularCategories = ['Criminal Law', 'Civil Law', 'Family Law', 'Property Law', 'Labour Law'];
+    const popularCategories = ['Criminal Law', 'Labour and Employment Law', 'Traffic', 'Consumer Protection & E-Commerce Law', 'Cybercrime'];
 
-    // Fetch categories on mount
+    // Fetch categories on mount and read URL category parameter
     useEffect(() => {
         const fetchCategories = async () => {
             try {
                 const response = await fetch('/api/laws/categories');
                 if (!response.ok) throw new Error('Failed to fetch categories');
                 const data: string[] = await response.json();
-                setCategories(['All', ...data]);
+                setCategories(Array.isArray(data) ? data : []);
+                
+                // Check if category is passed via URL
+                const categoryFromUrl = searchParams.get('category');
+                if (categoryFromUrl && data.includes(categoryFromUrl)) {
+                    setSelectedCategory(categoryFromUrl);
+                }
             } catch (err: any) {
                 console.error('Error fetching categories:', err);
             }
         };
         fetchCategories();
-    }, []);
+    }, [searchParams]);
 
-    // Fetch all laws on mount
-    useEffect(() => {
-        const fetchLaws = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const response = await fetch('/api/laws');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch laws. Please try again later.');
-                }
-                const data: Law[] = await response.json();
-                setAllLaws(data);
-                setFilteredLaws(data);
-            } catch (err: any) {
-                setError(err.message || 'An unexpected error occurred.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchLaws();
-    }, []);
-
-    // Filter laws when category or search changes
-    useEffect(() => {
-        let filtered = allLaws;
-
-        // Filter by category
-        if (selectedCategory !== 'All') {
-            filtered = filtered.filter(law => law.category === selectedCategory);
+    // Fetch laws for selected category, page, and search
+    const fetchLaws = async (page: number) => {
+        // Allow search without category selection
+        if (!selectedCategory && !searchQuery.trim()) {
+            setLaws([]);
+            setTotalLaws(0);
+            setCurrentPage(1);
+            return;
         }
-
-        // Filter by search query
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(law =>
-                law.title.toLowerCase().includes(query) ||
-                law.description.toLowerCase().includes(query) ||
-                law.simplified_description.toLowerCase().includes(query) ||
-                (law.keywords && law.keywords.some(k => k.toLowerCase().includes(query)))
-            );
+        setIsLoading(true);
+        setError(null);
+        try {
+            const params = new URLSearchParams();
+            if (selectedCategory) params.append('category', selectedCategory);
+            if (searchQuery.trim()) params.append('search', searchQuery.trim());
+            params.append('page', String(page));
+            params.append('limit', String(lawsPerPage));
+            const qs = params.toString();
+            const response = await fetch(`/api/laws${qs ? `?${qs}` : ''}`);
+            if (!response.ok) throw new Error(`Failed to fetch laws (${response.status})`);
+            const data = await response.json();
+            const list: Law[] = Array.isArray(data?.laws) ? data.laws : (Array.isArray(data) ? data : []);
+            const total = typeof data?.total === 'number' ? data.total : (Array.isArray(data) ? data.length : 0);
+            // Sort by law_code and section_number in ascending order
+            list.sort((a, b) => {
+                if (a.law_code !== b.law_code) return a.law_code.localeCompare(b.law_code);
+                const getNumericPart = (section: string) => {
+                    const match = section.match(/^(\d+)/);
+                    return match ? parseInt(match[1], 10) : 0;
+                };
+                const aNum = getNumericPart(a.section_number);
+                const bNum = getNumericPart(b.section_number);
+                if (aNum !== bNum) return aNum - bNum;
+                return a.section_number.localeCompare(b.section_number, undefined, { numeric: true });
+            });
+            setLaws(list);
+            setTotalLaws(total);
+            setCurrentPage(page);
+        } catch (err: any) {
+            setError(err?.message || 'Failed to load laws');
+            setLaws([]);
+            setTotalLaws(0);
+        } finally {
+            setIsLoading(false);
         }
+    };
 
-        // Sort by law_code and section_number in ascending order
-        filtered.sort((a, b) => {
-            // First sort by law_code
-            if (a.law_code !== b.law_code) {
-                return a.law_code.localeCompare(b.law_code);
-            }
-            
-            // Extract numeric part from section_number for proper numeric sorting
-            const getNumericPart = (section: string) => {
-                const match = section.match(/^(\d+)/);
-                return match ? parseInt(match[1], 10) : 0;
-            };
-            
-            const aNum = getNumericPart(a.section_number);
-            const bNum = getNumericPart(b.section_number);
-            
-            // Compare numeric parts
-            if (aNum !== bNum) {
-                return aNum - bNum;
-            }
-            
-            // If numeric parts are equal, compare full strings (handles 123A vs 123B)
-            return a.section_number.localeCompare(b.section_number, undefined, { numeric: true });
-        });
+    // When category or search changes, reset to page 1 and fetch
+    useEffect(() => {
+        if (!selectedCategory && !searchQuery.trim()) {
+            setLaws([]);
+            setTotalLaws(0);
+            setCurrentPage(1);
+            return;
+        }
+        const t = setTimeout(() => fetchLaws(1), 300); // debounce with search
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedCategory, searchQuery]);
 
-        setFilteredLaws(filtered);
-    }, [selectedCategory, searchQuery, allLaws]);
+    // Pagination handlers
+    const totalPages = Math.max(1, Math.ceil(totalLaws / lawsPerPage));
+    const hasPrev = currentPage > 1;
+    const hasNext = currentPage < totalPages;
+    const goPrev = () => hasPrev && fetchLaws(currentPage - 1);
+    const goNext = () => hasNext && fetchLaws(currentPage + 1);
 
     // Card component: add bg, rounded, shadow; remove border separators
     const LawCard: React.FC<LawCardProps> = ({ law /*, isLast*/ }) => {
@@ -170,10 +176,10 @@ const LawLibraryPage: React.FC = () => {
             <div className="relative">
                 <input
                     type="text"
-                    placeholder="Search legal topics..."
+                    placeholder="Search legal topics across all laws..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"  // was py-3, rounded-lg
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
             </div>
 
@@ -183,19 +189,6 @@ const LawLibraryPage: React.FC = () => {
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Popular Categories</label>
                     <div className="flex flex-wrap gap-1.5"> {/* was gap-2 */}
-                        <button
-                            onClick={() => setSelectedCategory('All')}
-                            className={`
-                                px-3 py-1.5 rounded-full text-xs font-medium border    /* was px-4 py-2 text-sm */
-                                ${selectedCategory === 'All'
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                }
-                                transition-colors
-                            `}
-                        >
-                            All
-                        </button>
                         {popularCategories
                             .filter(cat => categories.includes(cat))
                             .map((category) => (
@@ -223,20 +216,23 @@ const LawLibraryPage: React.FC = () => {
                     <select
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="w-full md:w-56 p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"  /* was md:w-64 and rounded-lg */
+                        className="w-full md:w-56 p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     >
-                        <option value="All">All Categories</option>
-                        {categories.filter(c => c !== 'All').map((c) => (
+                        <option value="">Select a category</option>
+                        {categories.map((c) => (
                             <option key={c} value={c}>{c}</option>
                         ))}
                     </select>
                 </div>
             </div>
 
-            {/* Results Count */}
-            <div className="text-xs text-gray-600">  {/* was text-sm */}
-              Showing {filteredLaws.length} of {allLaws.length} laws
-              {selectedCategory !== 'All' && ` in ${selectedCategory}`}
+            {/* Results Count / Prompt */}
+            <div className="text-xs text-gray-600">
+              {!selectedCategory && !searchQuery.trim()
+                ? 'Select a category or search to view laws.'
+                : isLoading
+                  ? 'Loading…'
+                  : `${totalLaws} total law(s), showing ${laws.length} on page ${currentPage}`}
             </div>
 
             {/* Loading/Error States */}
@@ -244,26 +240,43 @@ const LawLibraryPage: React.FC = () => {
             {error && <p className="text-red-600 text-center py-8">{error}</p>}
             
             {/* Law List */}
-            {!isLoading && !error && (
+            {(selectedCategory || searchQuery.trim()) && !isLoading && !error && laws.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {filteredLaws.sort((a, b) => {
-                        // keep your numeric sort for sections
-                        if (a.law_code !== b.law_code) return a.law_code.localeCompare(b.law_code);
-                        const n = (s: string) => (s.match(/^(\d+)/) ? parseInt(RegExp.$1, 10) : 0);
-                        const an = n(a.section_number), bn = n(b.section_number);
-                        if (an !== bn) return an - bn;
-                        return a.section_number.localeCompare(b.section_number, undefined, { numeric: true });
-                    }).map((law, index) => (
-                        <LawCard key={law._id} law={law} isLast={index === filteredLaws.length - 1} />
+                    {laws.map((law, index) => (
+                        <LawCard key={law._id} law={law} isLast={index === laws.length - 1} />
                     ))}
                 </div>
             )}
 
-            {/* Empty State */}
-            {!isLoading && !error && filteredLaws.length === 0 && (
-                <p className="text-gray-600 text-center py-8">
-                    No laws found matching your criteria.
-                </p>
+            {/* Empty States */}
+            {!isLoading && !error && !selectedCategory && !searchQuery.trim() && (
+                <p className="text-gray-600 text-center py-8">Select a category or search to view laws.</p>
+            )}
+            {!isLoading && !error && (selectedCategory || searchQuery.trim()) && laws.length === 0 && (
+                <p className="text-gray-600 text-center py-8">No laws found matching your criteria.</p>
+            )}
+
+            {/* Pagination Controls */}
+            {(selectedCategory || searchQuery.trim()) && !isLoading && laws.length > 0 && (
+                <div className="flex justify-between items-center pt-4 border-t">
+                    <button
+                        onClick={goPrev}
+                        disabled={!hasPrev}
+                        className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Previous
+                    </button>
+                    <span className="text-xs text-gray-600">
+                        Page {currentPage} of {Math.max(1, Math.ceil(totalLaws / lawsPerPage))}
+                    </span>
+                    <button
+                        onClick={goNext}
+                        disabled={!hasNext}
+                        className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Next
+                    </button>
+                </div>
             )}
         </div>
     );

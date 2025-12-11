@@ -1,12 +1,13 @@
 // src/App.tsx
 
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // Import the providers and components
 import { AuthProvider } from './context/AuthContext'; // Wraps the app
 import ProtectedRoute from './components/ProtectedRoute'; // Protects routes
 import Header from './components/Header'; // Your existing Header
+import BottomNav from './components/BottomNav';
 import ChatModal from './components/ChatModal'; // Your existing ChatModal
 
 // Import your page components
@@ -17,95 +18,109 @@ import AdvicePage from './pages/AdvicePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import SectionDetailPage from './pages/SectionDetailPage';
+import SavedAdvicePage from './pages/SavedAdvicePage';
+
+// Import admin components
+import AdminLayout from './pages/admin/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import ManageLawsPage from './pages/admin/ManageLawsPage';
+import ViewUsersPage from './pages/admin/ViewUsersPage';
+// FlaggedQueriesPage removed
 
 const App: React.FC = () => {
-    // State for ChatModal can remain here
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
+    );
+};
+
+// Separate component to use useLocation hook
+const AppContent: React.FC = () => {
     const [isChatModalOpen, setChatModalOpen] = React.useState(false);
     const handleOpenChat = () => setChatModalOpen(true);
+    const location = useLocation();
+    
+    // Check if we're on an admin route
+    const isAdminRoute = location.pathname.startsWith('/admin');
+    const hideChromeRoutes = ['/login', '/signup'];
+    const showBottomNav = !isAdminRoute && !hideChromeRoutes.includes(location.pathname);
 
     return (
-        // 1. Wrap the ENTIRE application with AuthProvider.
-        // This makes the authentication state (token, user, login, logout, isLoading)
-        // available to all components inside via the useAuth() hook.
-        <AuthProvider>
-            <div className="min-h-screen bg-slate-100 flex flex-col">
-                {/* Header is rendered within AuthProvider so it can use useAuth() */}
-                <Header />
+        <div className="min-h-screen bg-slate-100 flex flex-col">
+            {/* Don't show Header on admin routes as AdminLayout has its own */}
+            {!isAdminRoute && <Header />}
 
-                {/* Main content area */}
-                {/* Use flex-grow to make sure footer (if added) stays at bottom */}
-                <main className="flex-grow max-w-7xl w-full mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            {/* Main content area */}
+            {isAdminRoute ? (
+                // Admin routes render without the main wrapper
+                <Routes>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/signup" element={<SignupPage />} />
+
+                    <Route
+                        path="/admin"
+                        element={
+                            <ProtectedRoute requiredRole="admin">
+                                <AdminLayout />
+                            </ProtectedRoute>
+                        }
+                    >
+                        <Route path="dashboard" element={<AdminDashboard />} />
+                        <Route path="manage-laws" element={<ManageLawsPage />} />
+                        <Route path="users" element={<ViewUsersPage />} />
+                        {/** flagged route removed */}
+                        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                    </Route>
+
+                    <Route path="/" element={<ProtectedRoute><HomePage onOpenChat={handleOpenChat} /></ProtectedRoute>} />
+                    <Route path="/describe" element={<ProtectedRoute><DescribePage /></ProtectedRoute>} />
+                    <Route path="/advice" element={<ProtectedRoute><AdvicePage /></ProtectedRoute>} />
+                    <Route path="/saved-advice" element={<ProtectedRoute><SavedAdvicePage /></ProtectedRoute>} />
+                    <Route path="/library" element={<ProtectedRoute><LawLibraryPage /></ProtectedRoute>} />
+                    <Route path="/laws/:id" element={<ProtectedRoute><SectionDetailPage /></ProtectedRoute>} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            ) : (
+                // Regular routes render with main wrapper
+                <main className={`flex-grow max-w-7xl w-full mx-auto py-6 px-4 sm:px-6 lg:px-8 ${showBottomNav ? 'pb-24' : ''}`}>
                     <Routes>
-                        {/* --- Public Routes --- */}
-                        {/* These routes are accessible whether the user is logged in or not */}
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/signup" element={<SignupPage />} />
 
-                        {/* --- Protected Routes --- */}
-                        {/* These routes are wrapped with <ProtectedRoute> */}
-                        {/* If the user is not logged in, they will be redirected to /login */}
-                        {/* The 'children' prop of ProtectedRoute is the page component */}
                         <Route
-                            path="/" // Homepage
+                            path="/admin"
                             element={
-                                <ProtectedRoute>
-                                    <HomePage onOpenChat={handleOpenChat} />
+                                <ProtectedRoute requiredRole="admin">
+                                    <AdminLayout />
                                 </ProtectedRoute>
                             }
-                        />
-                        <Route
-                            path="/describe" // Describe legal issue page
-                            element={
-                                <ProtectedRoute>
-                                    <DescribePage />
-                                </ProtectedRoute>
-                            }
-                        />
-                        <Route
-                            path="/advice" // Page to display RAG results
-                            element={
-                                <ProtectedRoute>
-                                    <AdvicePage />
-                                </ProtectedRoute>
-                            }
-                        />
-                        <Route
-                            path="/library" // Law library page
-                            element={
-                                <ProtectedRoute>
-                                    <LawLibraryPage />
-                                </ProtectedRoute>
-                            }
-                        />
-                        <Route
-                            path="/laws/:id" // Section detail page
-                            element={
-                                <ProtectedRoute>
-                                    <SectionDetailPage />
-                                </ProtectedRoute>
-                            }
-                        />
-                        <Route path="/law-library" element={<LawLibraryPage />} />
+                        >
+                            <Route path="dashboard" element={<AdminDashboard />} />
+                            <Route path="manage-laws" element={<ManageLawsPage />} />
+                            <Route path="users" element={<ViewUsersPage />} />
+                            {/** flagged route removed */}
+                            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                        </Route>
 
-                        {/* --- Catch-all Route --- */}
-                        {/* Redirect any unknown paths to the homepage */}
-                        {/* Ensure this is the LAST route defined */}
+                        <Route path="/" element={<ProtectedRoute><HomePage onOpenChat={handleOpenChat} /></ProtectedRoute>} />
+                        <Route path="/describe" element={<ProtectedRoute><DescribePage /></ProtectedRoute>} />
+                        <Route path="/advice" element={<ProtectedRoute><AdvicePage /></ProtectedRoute>} />
+                        <Route path="/saved-advice" element={<ProtectedRoute><SavedAdvicePage /></ProtectedRoute>} />
+                        <Route path="/library" element={<ProtectedRoute><LawLibraryPage /></ProtectedRoute>} />
+                        <Route path="/laws/:id" element={<ProtectedRoute><SectionDetailPage /></ProtectedRoute>} />
                         <Route path="*" element={<Navigate to="/" replace />} />
-
                     </Routes>
                 </main>
+            )}
 
-                {/* ChatModal rendered outside Routes to overlay */}
-                {/* It might need access to auth state via useAuth() if its functionality depends on login status */}
-                <ChatModal
-                    isOpen={isChatModalOpen}
-                    onClose={() => setChatModalOpen(false)}
-                />
+            <ChatModal
+                isOpen={isChatModalOpen}
+                onClose={() => setChatModalOpen(false)}
+            />
 
-                {/* Optional: Add a Footer component here */}
-                {/* <Footer /> */}
-            </div>
-        </AuthProvider>
+            {showBottomNav && <BottomNav />}
+        </div>
     );
 };
 

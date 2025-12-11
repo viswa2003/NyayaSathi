@@ -3,3 +3,223 @@
 @tailwind utilities;
 
 /* Your custom styles below */
+
+/* Subtle animated gradient background for WelcomeBanner */
+.bg-wave-gradient {
+  /* Smooth multi-stop blue gradient */
+  background-image: linear-gradient(90deg, #2563eb 0%, #3b82f6 25%, #60a5fa 50%, #3b82f6 75%, #2563eb 100%);
+  background-size: 200% 100%; /* allow horizontal movement */
+  animation: wave-move 12s ease-in-out infinite;
+}
+
+@keyframes wave-move {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .bg-wave-gradient { animation: none; }
+}
+
+/* Fancy CTA button effect used in WelcomeBanner */
+.fancy-button {
+	padding: 1em 2em;
+	border: none;
+	border-radius: 0.5rem; /* match Tailwind rounded-lg */
+	font-weight: bold;
+	letter-spacing: 5px;
+	text-transform: uppercase;
+	cursor: pointer;
+	color: #2563eb; /* blue-600 */
+	transition: all 1000ms;
+	font-size: 15px;
+	position: relative;
+	overflow: hidden;
+	outline: 2px solid #2563eb; /* blue-600 */
+	background: #ffffff; /* white base before hover */
+	z-index: 0;
+}
+
+.fancy-button:hover {
+	color: #ffffff;
+	transform: scale(1.1);
+	outline: 2px solid #60a5fa; /* blue-400 */
+	box-shadow: 4px 5px 17px -4px #1d4ed8; /* blue-700 */
+}
+
+.fancy-button::before {
+	content: "";
+	position: absolute;
+	left: -50px;
+	top: 0;
+	width: 0;
+	height: 100%;
+	background-color: #2563eb; /* blue-600 */
+	transform: skewX(45deg);
+	z-index: 0; /* sit above the white background, below the text */
+	transition: width 1000ms;
+}
+
+.fancy-button:hover::before {
+	width: 250%;
+}
+
+/* Compact version of fancy button for header logout */
+.fancy-button-small {
+	padding: 0.4em 0.8em;
+	border: none;
+	border-radius: 0.375rem;
+	font-weight: 600;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	cursor: pointer;
+	color: #2563eb; /* blue-600 */
+	transition: all 500ms;
+	font-size: 11px;
+	position: relative;
+	overflow: hidden;
+	outline: 1.5px solid #2563eb; /* blue-600 */
+	background: #ffffff; /* white base before hover */
+	z-index: 0;
+}
+
+.fancy-button-small:hover {
+	color: #ffffff;
+	transform: scale(1.05);
+	outline: 1.5px solid #60a5fa; /* blue-400 */
+	box-shadow: 2px 3px 10px -2px #1d4ed8; /* blue-700 */
+}
+
+.fancy-button-small::before {
+	content: "";
+	position: absolute;
+	left: -50px;
+	top: 0;
+	width: 0;
+	height: 100%;
+	background-color: #2563eb; /* blue-600 */
+	transform: skewX(45deg);
+	z-index: 0;
+	transition: width 500ms;
+}
+
+.fancy-button-small:hover::before {
+	width: 250%;
+}
+
+/* Fancy effect adapted for cards: same animated overlay and outline,
+	 but without button-specific padding. Designed to wrap full card content. */
+.fancy-card {
+	position: relative;
+	overflow: hidden;
+	outline: 2px solid #2563eb; /* blue-600 */
+	transition: transform 500ms, box-shadow 500ms, outline-color 500ms;
+	z-index: 0;
+}
+
+.fancy-card::before {
+	content: "";
+	position: absolute;
+	left: -80px;
+	top: 0;
+	width: 0;
+	height: 100%;
+	background-color: #2563eb; /* blue-600 */
+	transform: skewX(45deg);
+	z-index: 0;
+	transition: width 800ms;
+}
+
+.fancy-card:hover {
+	outline-color: #60a5fa; /* blue-400 */
+	box-shadow: 6px 8px 24px -8px #1d4ed8; /* blue-700 */
+	transform: scale(1.02);
+}
+
+.fancy-card:hover::before {
+	width: 220%;
+}
+
+/* Make card text turn white on hover (title and description only) */
+.fancy-card .fancy-card-content h3,
+.fancy-card .fancy-card-content p {
+  transition: color 300ms ease;
+}
+
+.fancy-card:hover .fancy-card-content h3,
+.fancy-card:hover .fancy-card-content p {
+  color: #ffffff;
+}
+
+/* 3D Flip Card Styles - Glassmorphism Effect */
+.flip-card {
+  box-sizing: border-box;
+  width: 100%;
+  height: 254px;
+  cursor: pointer;
+  transition: all 0.5s;
+  user-select: none;
+}
+
+.flip-card:hover {
+  transform: scale(1.05);
+}
+
+.flip-card:active {
+  transform: scale(0.95) rotateZ(1.7deg);
+}
+
+.flip-card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 17px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  /* Glassmorphism effect */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 12px 17px 51px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(6px);
+  text-align: center;
+  overflow: hidden; /* Keep illustrations within borders */
+}
+
+.flip-card-front {
+  background: linear-gradient(135deg, #93c5fd 0%, #3b82f6 100%); /* light blue to blue */
+  color: #fff;
+}
+
+.flip-card-back {
+  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); /* blue to dark blue */
+  color: #fff;
+  display: none; /* Hide back face since no flip */
+}
+
+/* Enhanced hover effects for card faces */
+.flip-card:hover .flip-card-front,
+.flip-card:hover .flip-card-back {
+  border: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+/* Subtle wave movement for gradient backgrounds on cards */
+.gradient-wave {
+	background-size: 200% 200%;
+	animation: wave-move 10s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.gradient-wave { animation: none; }
+}

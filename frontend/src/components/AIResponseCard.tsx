@@ -21,7 +21,7 @@ const AIResponseCard: React.FC<AIResponseCardProps> = ({ legalInformation, relev
           <details key={index} className="bg-white p-3 rounded-md shadow-sm">
             <summary className="font-semibold cursor-pointer text-blue-700">{`Section ${section.section_number}: ${section.section_title}`}</summary>
             <div className="mt-2 pt-2 border-t text-sm space-y-2">
-              <p><strong className="text-gray-600">Chapter:</strong> {section.chapter}</p>
+              {/* Chapter removed: not present in current RelevantSection schema */}
               <p><strong className="text-gray-600">Simple Explanation:</strong> {section.simple_explanation}</p>
               <p className="font-mono text-xs bg-gray-50 p-2 rounded"><strong className="text-gray-600">Legal Text:</strong> {section.legal_text}</p>
               <p><strong className="text-gray-600">Punishment:</strong> {section.punishment}</p>

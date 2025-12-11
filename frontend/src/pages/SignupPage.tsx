@@ -101,9 +101,9 @@ const SignupPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="flex justify-center">
+                {/* <div className="flex justify-center">
                     <ScalesIcon className="h-12 w-12 text-blue-600" />
-                </div>
+                </div> */}
                 <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
                     Create your NyayaSathi account
                 </h2>

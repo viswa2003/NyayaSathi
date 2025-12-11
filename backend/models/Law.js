@@ -90,6 +90,8 @@ lawSchema.index({
   simplified_description: "text", 
   keywords: "text" 
 });
-lawSchema.index({ law_code: 1, section_number: 1 });
+lawSchema.index({ law_code: 1, section_number: 1 }, { unique: true });
+// If sections can repeat across acts, use:
+// LawSchema.index({ act_name: 1, law_code: 1, section_number: 1 }, { unique: true });
 
 module.exports = mongoose.model('Law', lawSchema);

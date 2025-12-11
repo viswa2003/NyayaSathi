@@ -11,14 +11,16 @@ export interface User {
 // Defines a single legal section expected from the RAG API response.
 // Match the keys in your backend's contextFromDB mapping and AI response schema.
 export interface RelevantSection {
+  // Optional identifiers for lookup/UI
+  act_name?: string;
+  law_code?: string;
   section_number: string;
   section_title: string;       // Matches 'title' from Law model / AI schema
   simple_explanation: string;  // Matches 'simplified_description' / AI schema
-  legal_text: string;          // Matches 'description' / AI schema
+  legal_text?: string;          // Optional: present in some responses, else fetched via lookup
   punishment: string;
   // Optional fields if your backend includes them:
   // chapter?: string;
-  // law_code?: string;
   // category?: string;
 }
 

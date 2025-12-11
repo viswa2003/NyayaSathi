@@ -44,8 +44,8 @@ const DescribePage: React.FC = () => {
         }
 
         try {
-            // --- FIX: Use the full API URL ---
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/laws/describe`, {
+            // Call the RAG endpoint
+            const response = await fetch('/api/rag-laws/laws', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -54,7 +54,6 @@ const DescribePage: React.FC = () => {
                 },
                 body: JSON.stringify({ userProblem: issue }), // Send the user's input
             });
-            // --- END FIX ---
 
             const data = await response.json(); // Parse the JSON response
 
@@ -73,7 +72,7 @@ const DescribePage: React.FC = () => {
             }
 
             // On success (response.ok), navigate to the AdvicePage
-            navigate('/advice', { state: { advice: data } });
+            navigate('/advice', { state: { advice: data, userProblem: issue } });
 
         } catch (err: any) {
             // Set error state for network or other unexpected errors
@@ -92,23 +91,31 @@ const DescribePage: React.FC = () => {
          <div className="bg-white p-8 rounded-xl shadow-lg max-w-2xl mx-auto my-10 space-y-6">
             <h1 className="text-3xl font-bold text-gray-800">Describe Your Situation</h1>
             <p className="text-gray-600">
-                Tell us about your legal issue in simple words. We'll provide relevant information based on the Bharatiya Nyaya Sanhita (BNS).
+                Tell us about your legal issue in simple words. We'll provide relevant information based on Indian legal documents.
                 {user?.role === 'guest' && <span className="block text-sm text-yellow-600 mt-1"> (Guest access limited)</span>}
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-                <label htmlFor="legal-issue" className="sr-only">Describe your legal issue</label>
-                <textarea
-                    id="legal-issue"
-                    value={issue}
-                    onChange={(e) => setIssue(e.target.value)}
-                    rows={8}
-                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out" // Added focus:border
-                    placeholder="Example: My neighbor built a wall encroaching on my property..."
-                    required
-                    minLength={20} // Added minLength for better quality input
-                 />
-                 <p className="text-xs text-gray-500 text-right">Minimum 20 characters.</p>
+                <div className="relative w-full group">
+                    <span className="absolute -left-0.5 top-2 bottom-2 w-1.5 rounded bg-gradient-to-b from-indigo-500 to-purple-500 opacity-70 transition-all duration-300 group-focus-within:opacity-100"></span>
+                    <textarea
+                        id="legal-issue"
+                        value={issue}
+                        onChange={(e) => setIssue(e.target.value)}
+                        rows={8}
+                        className="peer w-full pl-6 pr-4 pt-6 pb-2 text-sm text-gray-800 bg-white border border-gray-200 rounded-lg shadow-md focus:border-transparent focus:ring-2 focus:ring-indigo-300 focus:outline-none transition-all duration-300 placeholder-transparent resize-none"
+                        placeholder=""
+                        required
+                        minLength={20}
+                    />
+                    <label
+                        htmlFor="legal-issue"
+                        className="absolute left-6 top-3.5 text-sm text-gray-500 transition-all duration-200 ease-in-out peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:top-1 peer-focus:text-xs peer-focus:text-indigo-500 peer-focus:font-semibold cursor-text pointer-events-none"
+                    >
+                        {issue.length > 0 ? 'Describe your legal issue' : 'Describe your legal issue (e.g., neighbor dispute, contract issue, property matter...)'}
+                    </label>
+                </div>
+                <p className="text-xs text-gray-500 text-right">Minimum 20 characters.</p>
 
                 {/* Display Error Message (handles both general and guest limit errors) */}
                 <ErrorDisplay message={error} isGuestLimit={isGuestLimitError} />
@@ -127,7 +134,7 @@ const DescribePage: React.FC = () => {
                 <p className="font-semibold">How it works:</p>
                 <ul className="list-disc list-inside text-sm mt-1">
                     <li>Describe your situation clearly.</li>
-                    <li>Our AI will analyze it against Indian laws (BNS).</li>
+                    <li>Our AI will analyze it against Indian laws.</li>
                     <li>Receive relevant sections, simple explanations, and general next steps.</li>
                     <li>This is informational only, not legal advice.</li>
                 </ul>
